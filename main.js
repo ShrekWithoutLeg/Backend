@@ -8,7 +8,7 @@ import { Server } from "socket.io";
 
 const app = express();
 app.use(express.json());
-const redis = new Redis({ url: process.env.REDIS_URL });
+const redis = new Redis(process.env.REDIS_URL);
 const port = process.env.PORT || 4000;
 
 app.use(
