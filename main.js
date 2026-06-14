@@ -75,7 +75,7 @@ io.on("connection", (socket) => {
     const roomData = io.of("/").adapter.rooms.get(roomName);
     const totalPeople = roomData ? roomData.size : 0;
     io.to(roomName).emit("room-count", { count: totalPeople });
-    if (totalPeople === 0) {
+    if (totalPeople < 1) {
       await redis.del(`messages:${roomName}`);
     }
   });
