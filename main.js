@@ -75,14 +75,14 @@ io.on("connection", (socket) => {
     const roomData = io.of("/").adapter.rooms.get(roomName);
     const totalPeople = roomData ? roomData.size : 0;
     io.to(roomName).emit("room-count", { count: totalPeople });
-    if (totalPeople < 1) {
+    if (totalPeople === 0) {
       await redis.del(`messages:${roomName}`);
     }
   });
 });
 
 app.get("/", (req, res) => {
-  res.send("Hello World!");
+  res.send("Hello World!" );
 });
 app.get("/get_messages", async (req, res) => {
   let raw = await redis.lrange(`messages:${req.query.room}`, 0, -1);
