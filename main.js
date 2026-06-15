@@ -3,12 +3,13 @@ import { createServer } from "http";
 import cors from "cors";
 import "dotenv/config";
 import Redis from "ioredis";
+import crypto from "crypto";
 import { Server } from "socket.io";
- 
+
 
 const app = express();
 app.use(express.json());
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis({ url: process.env.REDIS_URL });
 const port = process.env.PORT || 4000;
 
 app.use(
@@ -53,19 +54,26 @@ io.on("connection", (socket) => {
 
   // handle message form room
 
-  socket.on("message", async (data) => {
-    io.to(data.roomName).emit("recived-message", {
-      message: data.message,
+  socket.on("message", (data) => {
+    const submittedData = {
+      text: data.message,
       senderID: data.senderID,
       sender: data.sender,
-    });
+      time: data.time, 
+      replyTo: data.replyTo,
+    };
+    io.to(data.roomName).emit("recived-message", submittedData);
+     
 
-
-      await redis.rpush(`messages:${data.roomName}`, JSON.stringify(data));
+    redis
+      .rpush(`messages:${data.roomName}`, JSON.stringify(submittedData))
+      .catch((err) => {
+        console.log(err);
+      });
   });
 
   // ON disconnect
-  socket.on("disconnect", async () => {
+  socket.on("disconnect",  () => {
     socket.to(roomName).emit("user-left", user);
     socket.emit("user-detail-left", {
       name: user,
@@ -76,28 +84,20 @@ io.on("connection", (socket) => {
     const totalPeople = roomData ? roomData.size : 0;
     io.to(roomName).emit("room-count", { count: totalPeople });
     if (totalPeople === 0) {
-      await redis.del(`messages:${roomName}`);
+       redis.del(`messages:${roomName}`);
     }
   });
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello World!" );
-});
+ 
 app.get("/get_messages", async (req, res) => {
   let raw = await redis.lrange(`messages:${req.query.room}`, 0, -1);
-  
    
   res.json({
-    message:  raw.map(m=> JSON.parse(m))
-   
+    message: raw.map((m) => JSON.parse(m)),
   });
 });
 
-app.get("/del", async (req, res) => {
-  await redis.del(`messages:${req.query.room}`);
-  res.json({ message: "messages deleted" });
-});
 
 app.post("/chk", (req, res) => {
   res.send("Server running");
